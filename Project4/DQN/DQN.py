@@ -3,13 +3,13 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torch.nn
 import gymnasium as gym
-from Project4.DQN.replay_buffer import ReplayBufferDQN
+from replay_buffer import ReplayBufferDQN
 import wandb
 import random
 import numpy as np
 import os
 import time
-from Project4.DQN.utils import exponential_decay
+from utils import exponential_decay
 import typing
 
 # TODO: change the logging here if you don't like wandb
@@ -173,7 +173,28 @@ class DQN:
         # 6. compute loss between current Q and target Q
         # 7. backprop
         # ====================================
-        raise NotImplementedError("optimize_model func in DQN class not implemented")
+        # Guard: don't update until the buffer holds at least 10 * batch_size samples
+        if len(self.replay_buffer) < 10 * self.batch_size:
+            return False, 0
+        
+        # Sample a minibatch from the replay buffer
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size, device=self.device)
+        
+        # Compute current Q values
+        q_current = self.model(states).gather(1, actions.unsqueeze(1)).squeeze(1)
+
+        # Compute target Q values
+        with torch.no_grad():
+            q_next = self.model(next_states).max(1)[0]
+            q_next[dones] = 0.0
+            q_target = rewards + self.gamma * q_next * (1 - dones.float())
+        
+        # Compute loss and backpropagate
+        loss = self.loss_fn(q_current, q_target)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return True, loss.item()
 
         # ========== YOUR CODE ENDS ==========
 
@@ -194,8 +215,13 @@ class DQN:
         #  - if probability epsilon: random action
         #  - else: greedy action
         # ====================================
-        raise NotImplementedError("sample_action func in DQN class not implemented")
-
+        if random.random() < epsilon:
+            index = self.env.action_space.sample()
+        else:
+            with torch.no_grad():
+                state_tensor = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
+                q_values = self.model(state_tensor)
+                index = q_values.argmax().item()
         # ========== YOUR CODE ENDS ==========
         return index
 
