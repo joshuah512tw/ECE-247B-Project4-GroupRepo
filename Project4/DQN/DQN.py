@@ -310,7 +310,16 @@ class HardUpdateDQN(DQN):
         # TODO:
         # fill in the initialization and synchronization of the target model weights
         # ====================================
-        raise NotImplementedError("HardUpdateDQN class not implemented")
+
+        # create target network
+        self.target_model = model(self.observation_space,
+                                  self.env.action_space.n,
+                                  **model_kwargs).to(self.device)
+        
+        self.update_freq = update_freq # update frequency
+
+        # initlialize target weights to match online network
+        self.target_model.load_state_dict(self.model.state_dict())
 
         # ========== YOUR CODE ENDS ==========
 
@@ -326,8 +335,28 @@ class HardUpdateDQN(DQN):
         # hint: you can copy over most of the code from the parent class
         # and only change two lines
         # ====================================
-        raise NotImplementedError("optimize_model func in HardUpdateDQN class not implemented")
+        if len(self.replay_buffer) < 10 * self.batch_size:
+            return False, 0
+    
+        states, actions, rewards, next_states, dones = \
+            self.replay_buffer.sample(self.batch_size, device = self.device)
+        
+        q_current = self.model(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
+        with torch.no_grad():
+            next_actions = self.model(next_states).argmax(1, keepdim=True)
+            q_next = self.target_model(next_states).gather(1, next_actions).squeeze(1)
+            q_next[dones] = 0.0
+            q_target = rewards + self.gamma * q_next
+
+        loss = self.loss_fn(q_current, q_target)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        self._update_model()
+
+        return True, loss.item()
         # ========== YOUR CODE ENDS ==========
 
     def _update_model(self):
@@ -356,6 +385,7 @@ class SoftUpdateDQN(HardUpdateDQN):
         # ========== YOUR CODE HERE ==========
         # TODO
         # ====================================
-        raise NotImplementedError("update_model func in SoftUpdateDQN class not implemented")
+        for target_param, param in zip(self.target_model.parameters(), self.model.parameters()):
+            target_param.data = self.tau * param.data + (1-self.tau) * target_param.data
 
         # ========== YOUR CODE ENDS ==========
