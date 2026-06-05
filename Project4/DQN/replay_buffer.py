@@ -1,14 +1,16 @@
-import random 
-import torch 
+import random
+import collections
+import torch
 import numpy as np
 
 class ReplayBufferDQN:
     def __init__(self, buffer_size:int, seed:int=42):
         self.buffer_size = buffer_size
         self.seed = seed
-        self.buffer = []
+        # deque gives O(1) append and popleft vs O(n) list.pop(0)
+        self.buffer = collections.deque(maxlen=buffer_size)
         random.seed(self.seed)
-    
+
     def add(self, state:np.ndarray, action:int, reward:float, next_state:np.ndarray
             , done:bool):
         """
@@ -21,11 +23,12 @@ class ReplayBufferDQN:
             next_state (np.ndarray): the next state of shape [n_c,h,w]
             done (bool): whether the episode is done
         """
-        self.buffer.append((state, action, reward, next_state, done))
-        if len(self.buffer) > self.buffer_size:
-            self.buffer.pop(0)
-        
-    
+        # Store states as uint8 (0-255) to reduce memory 8x vs float64.
+        # float32 states (0.0-1.0) -> uint8 (0-255), converted back in sample().
+        state_u8 = (state * 255).astype(np.uint8)
+        next_state_u8 = (next_state * 255).astype(np.uint8)
+        self.buffer.append((state_u8, action, reward, next_state_u8, done))
+
     def sample(self, batch_size:int, device='cpu'):
         """
         Randomly sample a batch of experiences from the replay buffer.
@@ -39,7 +42,7 @@ class ReplayBufferDQN:
             rewards (torch.Tensor): Tensor of shape (batch_size,), dtype torch.float32.
             next_states (torch.Tensor): Tensor of shape (batch_size, n_channels, height, width), dtype torch.float32.
             dones (torch.Tensor): Tensor of shape (batch_size,), dtype torch.bool.
-        
+
         Notes:
             1. Use `random.sample` for uniform sampling without replacement.
             2. Convert NumPy arrays to torch tensors with the correct dtype before moving to `device`.
@@ -53,20 +56,20 @@ class ReplayBufferDQN:
         # 2. collect experiences using the sampled indices
         # 3. stack and move batches to the specified device, making sure to convert to the correct dtype
         # ====================================
-        indices = random.sample(range(len(self.buffer)), batch_size)
+        batch = random.sample(self.buffer, batch_size)
         states, actions, rewards, next_states, dones = [], [], [], [], []
-        for i in indices:
-            s, a, r, s_, d = self.buffer[i]
-            states.append(torch.from_numpy(s))
+        for s, a, r, s_, d in batch:
+            # Convert uint8 back to float32 in [0, 1]
+            states.append(torch.from_numpy(s.astype(np.float32) / 255.0))
             actions.append(torch.tensor(a, dtype=torch.int64))
             rewards.append(torch.tensor(r, dtype=torch.float32))
-            next_states.append(torch.from_numpy(s_))
+            next_states.append(torch.from_numpy(s_.astype(np.float32) / 255.0))
             dones.append(torch.tensor(d, dtype=torch.bool))
 
-        states = torch.stack(states).float().to(device)
+        states = torch.stack(states).to(device)
         actions = torch.stack(actions).long().to(device)
-        rewards = torch.stack(rewards).float().to(device)
-        next_states = torch.stack(next_states).float().to(device)
+        rewards = torch.stack(rewards).to(device)
+        next_states = torch.stack(next_states).to(device)
         dones = torch.stack(dones).bool().to(device)
         # ========== YOUR CODE ENDS ==========
 
