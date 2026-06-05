@@ -53,10 +53,21 @@ class ReplayBufferDQN:
         # 2. collect experiences using the sampled indices
         # 3. stack and move batches to the specified device, making sure to convert to the correct dtype
         # ====================================
-        raise NotImplementedError("sample in replay buffer not implemented")
-    
+        indices = random.sample(range(len(self.buffer)), batch_size)
+        states, actions, rewards, next_states, dones = [], [], [], [], []
+        for i in indices:
+            s, a, r, s_, d = self.buffer[i]
+            states.append(torch.from_numpy(s))
+            actions.append(torch.tensor(a, dtype=torch.int64))
+            rewards.append(torch.tensor(r, dtype=torch.float32))
+            next_states.append(torch.from_numpy(s_))
+            dones.append(torch.tensor(d, dtype=torch.bool))
 
-    
+        states = torch.stack(states).float().to(device)
+        actions = torch.stack(actions).long().to(device)
+        rewards = torch.stack(rewards).float().to(device)
+        next_states = torch.stack(next_states).float().to(device)
+        dones = torch.stack(dones).bool().to(device)
         # ========== YOUR CODE ENDS ==========
 
         return states, actions, rewards, next_states, dones
