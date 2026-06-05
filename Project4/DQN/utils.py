@@ -57,6 +57,6 @@ def preprocess(img):
     img = img[:84, 6:90] # CarRacing-v2-specific cropping
     # img = cv2.resize(img, dsize=(84, 84)) # or you can simply use rescaling
     
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) / 255.0
     return img
     
