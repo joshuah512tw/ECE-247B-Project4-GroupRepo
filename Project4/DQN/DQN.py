@@ -106,6 +106,8 @@ class DQN:
     ):
         os.makedirs(self.save_path, exist_ok=True)
         best_val_reward = -np.inf
+        self.train_rewards = []
+        self.val_rewards = []
 
         for episode in range(n_episodes):
             state, _ = self.env.reset()
@@ -132,6 +134,7 @@ class DQN:
                 avg_loss = loss / (i + 1)
             else:
                 avg_loss = loss / i
+            self.train_rewards.append(total_reward)
             if self.wandb:
                 wandb.log({"total_reward": total_reward, "loss": avg_loss})
             print(
@@ -139,6 +142,7 @@ class DQN:
             )
             if episode % validate_every == validate_every - 1:
                 mean_reward, std_reward = self.validate(n_validation_episodes)
+                self.val_rewards.append((episode, mean_reward))
                 if self.wandb:
                     wandb.log({"mean_reward": mean_reward, "std_reward": std_reward})
                 print("Validation Mean Reward: {} Validation Std Reward: {}".format(mean_reward, std_reward))
