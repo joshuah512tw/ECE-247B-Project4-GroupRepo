@@ -26,17 +26,18 @@ class MLP(nn.Module):
         # self.output = 
         # self.non_linear = 
         # ====================================
-        raise NotImplementedError("MLP not implemented")
-    
+        self.linear1 = nn.Linear(input_size, hidden_size)
+        self.output = nn.Linear(hidden_size, action_size)
+        self.non_linear = non_linear()    
 
 
         # ========== YOUR CODE ENDS ==========
 
     def forward(self, x:torch.Tensor)->torch.Tensor:
         # ========== YOUR CODE HERE ==========
-        raise NotImplementedError("MLP forward not implemented")
-    
-
+        x = self.linear1(x)
+        x = self.non_linear(x)
+        x = self.output(x)
 
         # ========== YOUR CODE ENDS ==========
         return x
