@@ -61,17 +61,36 @@ class Nature_Paper_Conv(nn.Module):
         """
         super(Nature_Paper_Conv, self).__init__()
         # ========== YOUR CODE HERE ==========
-        raise NotImplementedError("Nature_Paper_Conv not implemented")
-    
+        # Build the CNN block as self.CNN(nn.Sequential):
+        # Conv2d(input_size[0], 32, kernel_size=8, stride=4), nn.ReLU(),
+        # Conv2d(32, 64, kernel_size=4, stride=2), nn.ReLU(),
+        # Conv2d(64, 64, kernel_size=3, stride=1), nn.ReLU())
+        self.CNN = nn.Sequential(
+            nn.Conv2d(input_size[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+        # Compute the flattened spatial dimension after all three convolutions.
+        # For a conv layer: output_size = (input_size - kernel_size) // stride + 1
+        # Apply this formula three times starting from 84
+        flattened_size = (64 * (((((input_size[1] - 8) // 4 + 1) - 4) // 2 + 1) - 3) // 1 + 1)
 
 
+        # Build the MLP head as self.MLP (use your MLP class from above):
+        # flattened_size -> 512 -> action_size
+        self.MLP = MLP(flattened_size, action_size, hidden_size=512)
         # ========== YOUR CODE ENDS ==========
 
     def forward(self, x:torch.Tensor)->torch.Tensor:
         # ========== YOUR CODE HERE ==========
-        raise NotImplementedError("Nature_Paper_Conv forward not implemented")
-    
-
-    
+        # 1. Pass x through self.CNN
+        # 2. Flatten spatial dimensions: torch.flatten(x, start_dim=1)
+        # 3. Pass through self.MLP and return
+        x = self.CNN(x)
+        x = torch.flatten(x, start_dim=1)
+        x = self.MLP(x)     
         # ========== YOUR CODE ENDS ==========
         return x
