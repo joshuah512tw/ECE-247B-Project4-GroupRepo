@@ -77,7 +77,7 @@ class Nature_Paper_Conv(nn.Module):
         # Compute the flattened spatial dimension after all three convolutions.
         # For a conv layer: output_size = (input_size - kernel_size) // stride + 1
         # Apply this formula three times starting from 84
-        flattened_size = (64 * (((((input_size[1] - 8) // 4 + 1) - 4) // 2 + 1) - 3) // 1 + 1)
+        flattened_size = self.CNN(torch.zeros(1, *input_size)).flatten(1).shape[1]
 
 
         # Build the MLP head as self.MLP (use your MLP class from above):
