@@ -179,7 +179,8 @@ class DQN:
         
         # Sample a minibatch from the replay buffer
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size, device=self.device)
-        
+        states = states.float() / 255.0
+        next_states = next_states.float() / 255.0
         # Compute current Q values
         q_current = self.model(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
@@ -219,7 +220,7 @@ class DQN:
             index = self.env.action_space.sample()
         else:
             with torch.no_grad():
-                state_tensor = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
+                state_tensor = torch.from_numpy(state).float().unsqueeze(0).to(self.device) / 255.0
                 q_values = self.model(state_tensor)
                 index = q_values.argmax().item()
         # ========== YOUR CODE ENDS ==========
