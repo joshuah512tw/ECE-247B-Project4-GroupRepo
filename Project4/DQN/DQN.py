@@ -341,6 +341,8 @@ class HardUpdateDQN(DQN):
     
         states, actions, rewards, next_states, dones = \
             self.replay_buffer.sample(self.batch_size, device = self.device)
+        states = states.float() / 255.0
+        next_states = next_states.float() / 255.0
         
         q_current = self.model(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
